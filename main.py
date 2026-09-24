@@ -1,13 +1,20 @@
+import os
+import joblib
 from fastapi import FastAPI
 from pydantic import BaseModel
-import joblib
 
 app = FastAPI(title="Roche FIDSS AI Engine")
 
-# Load pre-trained model artifacts
-vectorizer = joblib.load("tfidf_vectorizer.joblib")
-model_cat = joblib.load("linear_svc_category.joblib")
-model_act = joblib.load("linear_svc_actionability.joblib")
+# Get absolute directory path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def get_path(filename):
+    return os.path.join(BASE_DIR, filename)
+
+# Load pre-trained model artifacts dynamically
+vectorizer = joblib.load(get_path("tfidf_vectorizer.joblib"))
+model_cat = joblib.load(get_path("linear_svc_category.joblib"))
+model_act = joblib.load(get_path("linear_svc_actionability.joblib"))
 
 class InsightRequest(BaseModel):
     text: str
@@ -19,8 +26,11 @@ def home():
 @app.post("/predict")
 def predict_insight(payload: InsightRequest):
     text = payload.text
-    if not text.strip():
-        return {"predicted_category": "Commercial, Sales & Field Operations", "predicted_actionability": 0}
+    if not text or not text.strip():
+        return {
+            "predicted_category": "Commercial, Sales & Field Operations",
+            "predicted_actionability": 0
+        }
 
     vec = vectorizer.transform([text])
     pred_cat = model_cat.predict(vec)[0]
